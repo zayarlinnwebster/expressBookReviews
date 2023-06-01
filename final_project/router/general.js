@@ -1,4 +1,4 @@
-const express = require('express'); 
+const express = require('express');
 const axios = require('axios');
 
 let books = require("./booksdb.js");
@@ -8,6 +8,51 @@ const public_users = express.Router();
 
 const bookapiUrl = 'https://zayarl513-5000.theiadocker-3-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/';
 
+function getBooks() {
+    return new Promise((resolve, reject) => {
+        resolve(books);
+    });
+}
+
+function getBooksByISBN(isbn) {
+    const isbnNum = parseInt(isbn);
+
+    return new Promise((resolve, reject) => {
+        if (books[isbnNum]) {
+            resolve(books[isbnNum]);
+        } else {
+            reject({ status: 404, message: `ISBN ${isbn} not found` });
+        }
+    });
+}
+
+function getBooksByAuthor(author) {
+    return new Promise((resolve, reject) => {
+        const filterBooks = [];
+
+        for (const key in books) {
+            if (books[key].author === author) {
+                filterBooks.push(books[key]);
+            }
+        }
+
+        resolve(filterBooks);
+    });
+}
+
+function getBooksByTitle(title) {
+    return new Promise((resolve, reject) => {
+        const filterBooks = [];
+
+        for (const key in books) {
+            if (books[key].title === title) {
+                filterBooks.push(books[key]);
+            }
+        }
+
+        resolve(filterBooks);
+    });
+}
 
 public_users.post("/register", (req, res) => {
     const username = req.body.username;
@@ -26,82 +71,30 @@ public_users.post("/register", (req, res) => {
 
 // Get the book list available in the shop
 public_users.get('/', function (req, res) {
-    const bookList = [];
-
-    for (const key in books) {
-        bookList.push(books[key]);
-    }
-    res.send(JSON.stringify(bookList, null, 4));
+    getBooks().then((result) => res.send(JSON.stringify(result)));
 });
-
-async function getBooks() {
-    try {
-        const response = await axios.get(bookapiUrl);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
 
 // Get book details based on ISBN
 public_users.get('/isbn/:isbn', function (req, res) {
-    //Write your code here
-    const isbn = req.params.isbn;
-    res.send(books[isbn])
+    getBooksByISBN(req.params.isbn).then(
+        (result) => res.send(result),
+        (error) => res.status(error.status).json({ message: error.message })
+    );
 });
-
-async function getBooksByISBN(isbn) {
-    try {
-        const response = await axios.get(bookapiUrl + 'isbn/' + isbn);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
 
 // Get book details based on author
 public_users.get('/author/:author', function (req, res) {
-    const author = req.params.author;
-    const filterBooks = [];
-
-    for (const key in books) {
-        if (books[key].author === author) {
-            filterBooks.push(books[key]);
-        }
-    }
-    res.send(filterBooks);
+    getBooksByAuthor(req.params.author).then(
+        (result) => res.send(result),
+    );
 });
-
-async function getBooksByAuthor(author) {
-    try {
-        const response = await axios.get(bookapiUrl + 'author/' + author);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
 
 // Get all books based on title
 public_users.get('/title/:title', function (req, res) {
-    const title = req.params.title;
-    const filterBooks = [];
-
-    for (const key in books) {
-        if (books[key].title === title) {
-            filterBooks.push(books[key]);
-        }
-    }
-    res.send(filterBooks);
+    getBooksByTitle(req.params.title).then(
+        (result) => res.send(result),
+    );
 });
-
-async function getBooksByTitle(title) {
-    try {
-        const response = await axios.get(bookapiUrl + 'title/' + title);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
 
 //  Get book review
 public_users.get('/review/:isbn', function (req, res) {
